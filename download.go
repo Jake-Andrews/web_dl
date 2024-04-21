@@ -72,36 +72,44 @@ func SetDownloaderArgs(args []string) *DownloadInfo {
 	// Display the configured DownloadInfo instance
 	fmt.Printf("Filename: %s\n", info.Filename)
 	fmt.Printf("Dirname: %s\n", info.Dirname)
-	fmt.Printf("Content Size: %d\n", info.ContentSize)
-	fmt.Printf("URL: %s\n", info.URL)
+	fmt.Printf("Max Content Size: %d\n", info.ContentSize)
+	fmt.Printf("URL: %s\n\n", info.URL)
 
 	return info
 }
 
-func getFile(d *DownloadInfo) {
-	resp, err := http.Get(d.URL)
-
+func getFile(c *http.Client, d *DownloadInfo) {
+	//*https://pkg.go.dev/net/http#Get GET url
+	resp, err := c.Get(d.URL)
 	if err != nil {
-		fmt.Printf("%q\nDownload url: %q\n", d.URL, err)
+		log.Fatalf("%q\nDownload url: %q\n", err, d.URL)
+	} else {
+		fmt.Printf("Success downloading url: %q\n", d.URL)
 	}
+	//resp.Body ReadCloser interface, which contains Reader and Closer interfaces
 	defer resp.Body.Close()
 
+	//Create dir and file w/ mode (0666)
 	createDirectory(d.Dirname)
-
 	file, err := os.Create(d.Filename)
 	if err != nil {
 		log.Fatalf("%q\n", err)
+	} else {
+		fmt.Printf("Success creating file: %q\n", d.Filename)
 	}
 	defer file.Close()
 
-	//byte_slice, err := io.ReadAll(resp.Body)
-	//fmt.Printf("Body info-> len:%d, cap:%d", len(byte_slice), cap(byte_slice))
-	// Use io.Copy to just dump the response body to the file. This supports huge files
-
+	fmt.Printf("Response Body Len: %d\n", resp.ContentLength)
+	// ContentLength, -1 if length is unknown, unless Request.Method = HEAD, >= 0 means said # of bytes may be read from the body
+	resp_len := resp.ContentLength
 	written, err := io.Copy(file, resp.Body)
 	if err != nil {
-		log.Fatalf("%q\nBytes written:%d", err, written)
+		log.Fatalf("%q\nBytes written:%d\n", err, written)
+	} else if written != int64(resp_len) {
+		log.Fatalf(`Error writing to file, bytes written: 
+		%d Bytes, Number of bytes expected: %d Bytes\n`, written, resp_len)
 	} else {
-		fmt.Printf("Success writing to file, bytes written: %d\n", written)
+		fmt.Printf("Success writing to file, bytes written: %d Bytes\n", written)
+		fmt.Printf("Success writing to file, MB written: %.2f MB\n", float64(written)/1000000)
 	}
 }
