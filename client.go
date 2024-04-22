@@ -28,7 +28,7 @@ func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	respBytes, _ := httputil.DumpResponse(resp, false)
 	bytes = append(bytes, respBytes...)
 
-	fmt.Printf("%s\n", bytes)
+	fmt.Printf("\n\n%s\n\n", bytes)
 
 	return resp, err
 }

@@ -2,7 +2,9 @@ package web_dl
 
 import (
 	"log"
+	"net/url"
 	"os"
+	"path"
 )
 
 func createDirectory(dirPath string) {
@@ -10,6 +12,16 @@ func createDirectory(dirPath string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// extractFilename takes a URL string and returns the base filename component
+func extractFilename(urlStr string, defaultUrlStr string) string {
+	parsedUrl, err := url.Parse(urlStr)
+	if err != nil {
+		log.Println(err)
+		return defaultUrlStr
+	}
+	return path.Base(parsedUrl.Path)
 }
 
 // reads txt file and returns urls

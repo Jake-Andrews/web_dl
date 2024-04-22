@@ -30,16 +30,16 @@ func SetDownloaderArgs(args map[string][]string) *DownloadInfo {
 	}
 
 	for i, URI := range URISlice {
-		filename := info.Dirname + "test" + strconv.Itoa(i) + ".jpg"
+		filename := "generic_fname" + strconv.Itoa(i)
 		info.dfiles = append(info.dfiles, DownloadFile{Filename: filename, ContentSize: 0, URI: URI})
 	}
 
 	// Display the configured DownloadInfo instance
 	fmt.Printf("Dirname: %s\n", info.Dirname)
 	for i, file := range info.dfiles {
-		fmt.Printf("Download File %d, Filename: %s", i, file.Filename)
-		fmt.Printf("Download File %d, ContentSize: %d", i, file.ContentSize)
-		fmt.Printf("Download File %d, URI: %s", i, file.URI)
+		fmt.Printf("Download File %d, Filename: %s\n", i, file.Filename)
+		fmt.Printf("Download File %d, ContentSize: %d\n", i, file.ContentSize)
+		fmt.Printf("Download File %d, URI: %s\n", i, file.URI)
 	}
 
 	return info
@@ -49,12 +49,12 @@ func downloadFiles(c *http.Client, d *DownloadInfo) {
 	createDirectory(d.Dirname)
 	for i, dfile := range d.dfiles {
 		fmt.Printf("File# %d\n", i)
-		getFile(c, &dfile)
+		getFile(c, &dfile, d)
 
 	}
 }
 
-func getFile(c *http.Client, d *DownloadFile) {
+func getFile(c *http.Client, d *DownloadFile, dinfo *DownloadInfo) {
 	//*https://pkg.go.dev/net/http#Get GET url
 	resp, err := c.Get(d.URI)
 	if err != nil {
@@ -65,6 +65,9 @@ func getFile(c *http.Client, d *DownloadFile) {
 	//resp.Body ReadCloser interface, which contains Reader and Closer interfaces
 	defer resp.Body.Close()
 
+	//try to parse the filename & ext from URI, if this fails, use a generic filename
+	d.Filename = extractFilename(d.URI, d.Filename)
+	d.Filename = dinfo.Dirname + d.Filename
 	//Create file w/ mode (0666)
 	file, err := os.Create(d.Filename)
 	if err != nil {
