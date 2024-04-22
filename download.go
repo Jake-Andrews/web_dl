@@ -6,91 +6,66 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
-
-type DownloadInfo struct {
-	Filename    string
-	Dirname     string
-	ContentSize uint64
-	URL         string
-}
 
 //0 to 18446744073709551616 = 18446744073.709552765 GB
 //uint32 0 to 4294967295 roughly = 4.29 GB
 
-// Option function type to customize DownloadInfo fields
-type DownloadInfoOption func(*DownloadInfo)
-
-// Option function to set the filename
-func WithFilename(filename string) DownloadInfoOption {
-	return func(di *DownloadInfo) {
-		di.Filename = filename
-	}
+type DownloadInfo struct {
+	Dirname string
+	dfiles  []DownloadFile
 }
 
-// Option function to set the dirname
-func WithDirname(dirname string) DownloadInfoOption {
-	return func(di *DownloadInfo) {
-		di.Dirname = dirname
-	}
+type DownloadFile struct {
+	Filename    string
+	ContentSize uint64
+	URI         string
 }
 
-// Option function to set the content size
-func WithContentSize(contentSize uint64) DownloadInfoOption {
-	return func(di *DownloadInfo) {
-		di.ContentSize = contentSize
-	}
-}
-
-// Option function to set the URL
-func WithURL(url string) DownloadInfoOption {
-	return func(di *DownloadInfo) {
-		di.URL = url
-	}
-}
-
-// Function to create a new DownloadInfo instance with provided options
-func NewDownloadInfo(options ...DownloadInfoOption) *DownloadInfo {
-	di := &DownloadInfo{}
-
-	// Apply each option to the DownloadInfo instance
-	for _, option := range options {
-		option(di)
+func SetDownloaderArgs(args map[string][]string) *DownloadInfo {
+	URISlice := args["tail"]
+	info := &DownloadInfo{
+		Dirname: args["dirname"][0],
 	}
 
-	return di
-}
-
-func SetDownloaderArgs(args []string) *DownloadInfo {
-	info := NewDownloadInfo(
-		WithFilename("../../test/test_image.jpg"),
-		WithDirname("../../test"),
-		WithContentSize(10000000),
-		WithURL("https://preview.redd.it/4dqyhtrsjrmc1.jpeg?auto=webp&s=093d3be09624e47cb9b90d011c50a20fede99e52"),
-	)
+	for i, URI := range URISlice {
+		filename := info.Dirname + "test" + strconv.Itoa(i) + ".jpg"
+		info.dfiles = append(info.dfiles, DownloadFile{Filename: filename, ContentSize: 0, URI: URI})
+	}
 
 	// Display the configured DownloadInfo instance
-	fmt.Printf("Filename: %s\n", info.Filename)
 	fmt.Printf("Dirname: %s\n", info.Dirname)
-	fmt.Printf("Max Content Size: %d\n", info.ContentSize)
-	fmt.Printf("URL: %s\n\n", info.URL)
+	for i, file := range info.dfiles {
+		fmt.Printf("Download File %d, Filename: %s", i, file.Filename)
+		fmt.Printf("Download File %d, ContentSize: %d", i, file.ContentSize)
+		fmt.Printf("Download File %d, URI: %s", i, file.URI)
+	}
 
 	return info
 }
 
-func getFile(c *http.Client, d *DownloadInfo) {
+func downloadFiles(c *http.Client, d *DownloadInfo) {
+	createDirectory(d.Dirname)
+	for i, dfile := range d.dfiles {
+		fmt.Printf("File# %d\n", i)
+		getFile(c, &dfile)
+
+	}
+}
+
+func getFile(c *http.Client, d *DownloadFile) {
 	//*https://pkg.go.dev/net/http#Get GET url
-	resp, err := c.Get(d.URL)
+	resp, err := c.Get(d.URI)
 	if err != nil {
-		log.Fatalf("%q\nDownload url: %q\n", err, d.URL)
+		log.Fatalf("%q\nDownload url: %q\n", err, d.URI)
 	} else {
-		fmt.Printf("Success downloading url: %q\n", d.URL)
+		fmt.Printf("Success downloading url: %q\n", d.URI)
 	}
 	//resp.Body ReadCloser interface, which contains Reader and Closer interfaces
 	defer resp.Body.Close()
 
-	//Create dir and file w/ mode (0666)
-	createDirectory(d.Dirname)
+	//Create file w/ mode (0666)
 	file, err := os.Create(d.Filename)
 	if err != nil {
 		log.Fatalf("%q\n", err)
@@ -100,6 +75,7 @@ func getFile(c *http.Client, d *DownloadInfo) {
 	defer file.Close()
 
 	fmt.Printf("Response Body Len: %d\n", resp.ContentLength)
+	d.ContentSize = uint64(resp.ContentLength)
 	// ContentLength, -1 if length is unknown, unless Request.Method = HEAD, >= 0 means said # of bytes may be read from the body
 	resp_len := resp.ContentLength
 	written, err := io.Copy(file, resp.Body)
