@@ -12,49 +12,48 @@ import (
 //0 to 18446744073709551616 = 18446744073.709552765 GB
 //uint32 0 to 4294967295 roughly = 4.29 GB
 
-type DownloadInfo struct {
-	Dirname string
-	dfiles  []DownloadFile
-}
-
 type DownloadFile struct {
 	Filename    string
 	ContentSize uint64
 	URI         string
 }
 
-func SetDownloaderArgs(args map[string][]string) *DownloadInfo {
-	URISlice := args["tail"]
-	info := &DownloadInfo{
-		Dirname: args["dirname"][0],
-	}
-
-	for i, URI := range URISlice {
-		filename := "generic_fname" + strconv.Itoa(i)
-		info.dfiles = append(info.dfiles, DownloadFile{Filename: filename, ContentSize: 0, URI: URI})
+func SetDownloaderArgs(config *Config) []DownloadFile {
+	filesToDownload := []DownloadFile{}
+	for i, URI := range config.URIToFiles {
+		filename := "generic_fname" + strconv.Itoa(i) //set a fname incase a fname could not be generated later
+		filesToDownload = append(filesToDownload, DownloadFile{Filename: filename, ContentSize: 0, URI: URI})
 	}
 
 	// Display the configured DownloadInfo instance
-	fmt.Printf("Dirname: %s\n", info.Dirname)
-	for i, file := range info.dfiles {
+	fmt.Printf("Dirname: %s\n", config.Dirname)
+	for i, file := range filesToDownload {
 		fmt.Printf("Download File %d, Filename: %s\n", i, file.Filename)
 		fmt.Printf("Download File %d, ContentSize: %d\n", i, file.ContentSize)
 		fmt.Printf("Download File %d, URI: %s\n", i, file.URI)
 	}
 
-	return info
+	return filesToDownload
 }
 
-func downloadFiles(c *http.Client, d *DownloadInfo) {
-	createDirectory(d.Dirname)
-	for i, dfile := range d.dfiles {
+func downloadFiles(c *http.Client, config *Config, filesToDownload []DownloadFile) {
+	createDirectory(config.Dirname)
+	for i, dfile := range filesToDownload {
 		fmt.Printf("File# %d\n", i)
-		getFile(c, &dfile, d)
+		// build filename
+		dfile.Filename = extractFilename(dfile.URI, dfile.Filename)
+		dfile.Filename = config.Dirname + dfile.Filename
 
+		// if the file exists and flags set to false, don't download file
+		if pathExists(dfile.Filename) && !config.DownloadExistingFilenames {
+			fmt.Printf("File already exists, not downloading: %s", dfile.Filename)
+			continue
+		}
+		getFile(c, config, &dfile)
 	}
 }
 
-func getFile(c *http.Client, d *DownloadFile, dinfo *DownloadInfo) {
+func getFile(c *http.Client, config *Config, d *DownloadFile) {
 	//*https://pkg.go.dev/net/http#Get GET url
 	resp, err := c.Get(d.URI)
 	if err != nil {
@@ -67,7 +66,9 @@ func getFile(c *http.Client, d *DownloadFile, dinfo *DownloadInfo) {
 
 	//try to parse the filename & ext from URI, if this fails, use a generic filename
 	d.Filename = extractFilename(d.URI, d.Filename)
-	d.Filename = dinfo.Dirname + d.Filename
+	d.Filename = config.Dirname + d.Filename
+	d.Filename = getUniqueFilename(d.Filename)
+
 	//Create file w/ mode (0666)
 	file, err := os.Create(d.Filename)
 	if err != nil {
