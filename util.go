@@ -16,14 +16,26 @@ func createDirectory(dirPath string) {
 	}
 }
 
-// extractFilename takes a URL string and returns the base filename component
-func extractFilename(urlStr string, defaultUrlStr string) string {
+// takes a URL string and returns the base filename component if it can be found,
+// otherwise returns defaultURLStr (2nd argument)
+func extractFilename(urlStr string, dirname string) string {
 	parsedUrl, err := url.Parse(urlStr)
 	if err != nil {
-		log.Println(err)
-		return defaultUrlStr
+		log.Printf("Error parsing filename from: %s, not downloading\nError: %v\n", urlStr, err)
+		return ""
 	}
-	return path.Base(parsedUrl.Path)
+	// ensure the base path doesn't return useless garbage "." or "/"
+	basePath := path.Base(parsedUrl.Path)
+	if basePath == "/" || basePath == "" {
+		log.Printf("Error parsing filename from: %s, got: %s, not downloading\n", urlStr, basePath)
+		return ""
+	}
+	return dirname + basePath
+}
+
+func IsUrl(str string) bool {
+	u, err := url.Parse(str)
+	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
 func getUniqueFilename(path string) string {

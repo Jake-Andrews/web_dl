@@ -11,6 +11,7 @@ type Config struct {
 	DownloadExistingFilenames bool
 	Dirname                   string
 	URIToFiles                []string
+	MaxConcurrentDownloads    int
 }
 
 // parse args
@@ -28,8 +29,8 @@ func Start() {
 func parseArgs() *Config {
 	config := &Config{}
 	fmt.Printf("Args: %s\n", os.Args)
-	// Create flags for settings for the downloader, http_client, etc...
-	// Retry count, timeout, etc...
+	// create flags for settings for the downloader, http_client, etc...
+	// retry count, timeout, etc...
 
 	// dirname flag
 	const (
@@ -42,16 +43,32 @@ func parseArgs() *Config {
 	flag.BoolVar(&config.DownloadExistingFilenames, "E", false, `Set this flag to true, so files 
 	with filenames already existing in the download directory are downloaded by appending a number to the filename`)
 
+	// setup the maximum concurrent downloads flag.
+	const (
+		defaultMaxConcurrentDownloads = 5
+		usageMaxConcurrentDownloads   = "Maximum number of concurrent downloads."
+	)
+	flag.IntVar(&config.MaxConcurrentDownloads, "maxconcurrentdownloads", defaultMaxConcurrentDownloads, usageMaxConcurrentDownloads)
+	flag.IntVar(&config.MaxConcurrentDownloads, "M", defaultMaxConcurrentDownloads, usageMaxConcurrentDownloads+" (shorthand)")
+
 	flag.Parse()
 
 	// process non-flag args
 	if flag.NArg() == 0 {
 		log.Fatalln("No URI's provided as non-flag arguments, please provide URI's.")
 	}
-	fmt.Printf("Number of URI's provided: %d\n", flag.NArg())
 
-	config.URIToFiles = flag.Args()
-	fmt.Printf("Tail: %s\n", config.URIToFiles)
+	// remove non valid URI's
+	count := 0
+	for _, URI := range flag.Args() {
+		if IsUrl(URI) {
+			config.URIToFiles = append(config.URIToFiles, URI)
+		} else {
+			count += 1
+		}
+	}
+	fmt.Printf("Number of URI's provided: %d\n", flag.NArg()-count)
+	fmt.Printf("Tail URI's: %s\n", config.URIToFiles)
 
 	return config
 }

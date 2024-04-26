@@ -6,7 +6,29 @@ import (
 	"net/http/httputil"
 )
 
-type loggingTransport struct{}
+// enables injecting later if needed
+type loggingTransport struct {
+	Transport http.RoundTripper
+}
+
+func (t *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if t.Transport == nil {
+		t.Transport = http.DefaultTransport
+	}
+
+	resp, roundTripErr := http.DefaultTransport.RoundTrip(r)
+
+	requestBytes, errReq := httputil.DumpRequestOut(r, false)
+
+	respBytes, errResp := httputil.DumpResponse(resp, false)
+
+	if errReq == nil && errResp == nil {
+		requestBytes = append(requestBytes, respBytes...)
+		fmt.Printf("\n\n%s\n\n", requestBytes)
+	}
+
+	return resp, roundTripErr
+}
 
 func newClient() *http.Client {
 	//DefaultClient, DefaultTransport, etc...
@@ -15,20 +37,4 @@ func newClient() *http.Client {
 		Transport: &loggingTransport{},
 	}
 
-}
-
-// https://www.jvt.me/posts/2023/03/11/go-debug-http/
-// prints to the http.Client on every request
-func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
-	bytes, _ := httputil.DumpRequestOut(r, false)
-
-	resp, err := http.DefaultTransport.RoundTrip(r)
-	// err is returned after dumping the response
-
-	respBytes, _ := httputil.DumpResponse(resp, false)
-	bytes = append(bytes, respBytes...)
-
-	fmt.Printf("\n\n%s\n\n", bytes)
-
-	return resp, err
 }
