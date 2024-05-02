@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"time"
 )
 
 // enables injecting later if needed
@@ -16,10 +17,8 @@ func (t *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		t.Transport = http.DefaultTransport
 	}
 
-	resp, roundTripErr := http.DefaultTransport.RoundTrip(r)
-
+	resp, roundTripErr := t.Transport.RoundTrip(r)
 	requestBytes, errReq := httputil.DumpRequestOut(r, false)
-
 	respBytes, errResp := httputil.DumpResponse(resp, false)
 
 	if errReq == nil && errResp == nil {
@@ -30,11 +29,9 @@ func (t *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return resp, roundTripErr
 }
 
-func newClient() *http.Client {
-	//DefaultClient, DefaultTransport, etc...
-	//return &http.Client{}
+func newClient(timeout *int) *http.Client {
 	return &http.Client{
-		Transport: &loggingTransport{},
+		Transport: &loggingTransport{Transport: http.DefaultTransport},
+		Timeout:   time.Duration(*timeout) * time.Second,
 	}
-
 }

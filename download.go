@@ -2,10 +2,8 @@ package web_dl
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 )
 
@@ -56,10 +54,10 @@ func logDownloadConfig(config *Config, files []DownloadFile) {
 		fmt.Printf("Download File %d, ContentSize: %d\n", i, file.ContentSize)
 		fmt.Printf("Download File %d, URI: %s\n", i, file.URI)
 	}
+	fmt.Println()
 }
 
 func downloadFiles(c *http.Client, config *Config, filesToDownload []DownloadFile) {
-	fmt.Println("downloadFiles")
 	createDirectory(config.Dirname)
 
 	jobs := make(chan DownloadFile, len(filesToDownload))
@@ -79,7 +77,6 @@ func downloadFiles(c *http.Client, config *Config, filesToDownload []DownloadFil
 
 	// distribute jobs to workers
 	for _, dfile := range filesToDownload {
-		// check if a file is a duplicate
 		jobs <- dfile
 	}
 	close(jobs) // close jobs channel to signal no more jobs are coming
@@ -100,27 +97,8 @@ func getFile(c *http.Client, d *DownloadFile) {
 	//resp.Body ReadCloser interface, which contains Reader and Closer interfaces
 	defer resp.Body.Close()
 
-	//Create file w/ mode (0666)
-	file, err := os.Create(d.Filename)
-	if err != nil {
-		log.Fatalf("%q\n", err)
-	} else {
-		fmt.Printf("Success creating file: %q\n", d.Filename)
-	}
-	defer file.Close()
-
-	fmt.Printf("Response Body Len: %d\n", resp.ContentLength)
-	d.ContentSize = uint64(resp.ContentLength)
-	// ContentLength, -1 if length is unknown, unless Request.Method = HEAD, >= 0 means said # of bytes may be read from the body
-	resp_len := resp.ContentLength
-	written, err := io.Copy(file, resp.Body)
-	if err != nil {
-		log.Fatalf("%q\nBytes written:%d\n", err, written)
-	} else if written != int64(resp_len) {
-		log.Fatalf(`Error writing to file, bytes written: 
-		%d Bytes, Number of bytes expected: %d Bytes\n`, written, resp_len)
-	} else {
-		fmt.Printf("Success writing to file, bytes written: %d Bytes\n", written)
-		fmt.Printf("Success writing to file, MB written: %.2f MB\n", float64(written)/1000000)
+	//Create file w/ mode (0666) default, and transfer body to it
+	if fileErr := withCreate(d.Filename, resp.Body); fileErr != nil {
+		return
 	}
 }

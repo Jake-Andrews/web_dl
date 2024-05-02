@@ -2,12 +2,34 @@ package web_dl
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 )
+
+func withCreate(fileName string, body io.ReadCloser) error {
+	log.Printf("Creating file: %s\n", fileName)
+	f, err := os.Create(fileName)
+	if err != nil {
+		log.Println("Error creating the file.")
+		return err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, body); err != nil {
+		log.Println("Error copying resp.body to file.")
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		log.Println("Error closing the file.")
+		return err
+	}
+	return nil
+}
 
 func createDirectory(dirPath string) {
 	err := os.MkdirAll(dirPath, os.ModePerm)
@@ -16,8 +38,7 @@ func createDirectory(dirPath string) {
 	}
 }
 
-// takes a URL string and returns the base filename component if it can be found,
-// otherwise returns defaultURLStr (2nd argument)
+// Input: URL, Output: Base filename or ""
 func extractFilename(urlStr string, dirname string) string {
 	parsedUrl, err := url.Parse(urlStr)
 	if err != nil {
@@ -66,22 +87,3 @@ func pathExists(path string) bool {
 		return true
 	}
 }
-
-// reads txt file and returns urls
-/* func readFile(filePath string) (URLslice []string) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	// read file line by line
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		URLslice = append(URLslice, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	return URLslice
-} */

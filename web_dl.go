@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 )
 
 type Config struct {
@@ -12,25 +11,19 @@ type Config struct {
 	Dirname                   string
 	URIToFiles                []string
 	MaxConcurrentDownloads    int
+	Timeout                   *int
 }
-
-// parse args
-// create http client
-// create downloader
-// create get request using http client + downloader
 
 func Start() {
 	config := parseArgs()
-	client := newClient()
+	client := newClient(config.Timeout)
 	filesToDownload := SetDownloaderArgs(config)
 	downloadFiles(client, config, filesToDownload)
 }
 
 func parseArgs() *Config {
 	config := &Config{}
-	fmt.Printf("Args: %s\n", os.Args)
-	// create flags for settings for the downloader, http_client, etc...
-	// retry count, timeout, etc...
+	//fmt.Printf("Args: %s\n", os.Args)
 
 	// dirname flag
 	const (
@@ -43,13 +36,21 @@ func parseArgs() *Config {
 	flag.BoolVar(&config.DownloadExistingFilenames, "E", false, `Set this flag to true, so files 
 	with filenames already existing in the download directory are downloaded by appending a number to the filename`)
 
-	// setup the maximum concurrent downloads flag.
+	// maximum concurrent downloads flag.
 	const (
 		defaultMaxConcurrentDownloads = 5
 		usageMaxConcurrentDownloads   = "Maximum number of concurrent downloads."
 	)
 	flag.IntVar(&config.MaxConcurrentDownloads, "maxconcurrentdownloads", defaultMaxConcurrentDownloads, usageMaxConcurrentDownloads)
 	flag.IntVar(&config.MaxConcurrentDownloads, "M", defaultMaxConcurrentDownloads, usageMaxConcurrentDownloads+" (shorthand)")
+
+	// timeout flag
+	const (
+		defaultTimeout = 0
+		usageTimeout   = "Timeout for the HTTP client in seconds (0 = no timeout)"
+	)
+	flag.IntVar(config.Timeout, "timeout", defaultTimeout, usageTimeout)
+	flag.IntVar(config.Timeout, "t", defaultTimeout, usageTimeout+" (shorthand)")
 
 	flag.Parse()
 
@@ -58,7 +59,7 @@ func parseArgs() *Config {
 		log.Fatalln("No URI's provided as non-flag arguments, please provide URI's.")
 	}
 
-	// remove non valid URI's
+	// remove non valid URI's from tail args
 	count := 0
 	for _, URI := range flag.Args() {
 		if IsUrl(URI) {
@@ -68,7 +69,7 @@ func parseArgs() *Config {
 		}
 	}
 	fmt.Printf("Number of URI's provided: %d\n", flag.NArg()-count)
-	fmt.Printf("Tail URI's: %s\n", config.URIToFiles)
+	fmt.Printf("Tail URI's: %s\n\n", config.URIToFiles)
 
 	return config
 }
