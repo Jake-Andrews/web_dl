@@ -31,22 +31,6 @@ func SetDownloaderArgs(config *Config) []DownloadFile {
 	return filesToDownload
 }
 
-// builds filename from URI. If skip=True, skip file (can't parse URI for filename).
-func processURI(URI string, config *Config) (filename string, skip bool) {
-	filename = extractFilename(URI, config.Dirname)
-	if filename == "" {
-		return "", true // skip if no filename could be extracted
-	}
-	if pathExists(filename) {
-		if !config.DownloadExistingFilenames {
-			fmt.Printf("File already exists and DownloadExistingFilenames flag set to false, not downloading: %s\n", filename)
-			return "", true // skip download if file exists and DownloadExistingFilenames flag is set to false
-		}
-		filename = getUniqueFilename(filename) // file exists, flag=True, create unique filename and don't skip file
-	}
-	return filename, false
-}
-
 func logDownloadConfig(config *Config, files []DownloadFile) {
 	fmt.Printf("Dirname: %s\n", config.Dirname)
 	for i, file := range files {

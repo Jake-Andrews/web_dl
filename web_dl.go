@@ -11,7 +11,7 @@ type Config struct {
 	Dirname                   string
 	URIToFiles                []string
 	MaxConcurrentDownloads    int
-	Timeout                   *int
+	Timeout                   int
 }
 
 func Start() {
@@ -23,7 +23,6 @@ func Start() {
 
 func parseArgs() *Config {
 	config := &Config{}
-	//fmt.Printf("Args: %s\n", os.Args)
 
 	// dirname flag
 	const (
@@ -49,8 +48,8 @@ func parseArgs() *Config {
 		defaultTimeout = 0
 		usageTimeout   = "Timeout for the HTTP client in seconds (0 = no timeout)"
 	)
-	flag.IntVar(config.Timeout, "timeout", defaultTimeout, usageTimeout)
-	flag.IntVar(config.Timeout, "t", defaultTimeout, usageTimeout+" (shorthand)")
+	flag.IntVar(&config.Timeout, "timeout", defaultTimeout, usageTimeout)
+	flag.IntVar(&config.Timeout, "t", defaultTimeout, usageTimeout+" (shorthand)")
 
 	flag.Parse()
 

@@ -29,9 +29,9 @@ func (t *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return resp, roundTripErr
 }
 
-func newClient(timeout *int) *http.Client {
+func newClient(timeout int) *http.Client {
 	return &http.Client{
 		Transport: &loggingTransport{Transport: http.DefaultTransport},
-		Timeout:   time.Duration(*timeout) * time.Second,
+		Timeout:   time.Duration(timeout) * time.Second,
 	}
 }
