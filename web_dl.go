@@ -12,6 +12,7 @@ type Config struct {
 	URIToFiles                []string
 	MaxConcurrentDownloads    int
 	Timeout                   int
+	NumConnections            int
 }
 
 func Start() {
@@ -50,6 +51,14 @@ func parseArgs() *Config {
 	)
 	flag.IntVar(&config.Timeout, "timeout", defaultTimeout, usageTimeout)
 	flag.IntVar(&config.Timeout, "t", defaultTimeout, usageTimeout+" (shorthand)")
+
+	// num-connections flag
+	const (
+		defaultNumConnections = 4
+		usageNumConnections   = "Number of connections per download."
+	)
+	flag.IntVar(&config.NumConnections, "num-connections", defaultNumConnections, usageNumConnections)
+	flag.IntVar(&config.NumConnections, "C", defaultNumConnections, usageNumConnections+" (shorthand)")
 
 	flag.Parse()
 

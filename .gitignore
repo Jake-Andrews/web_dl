@@ -23,7 +23,12 @@ go.work
 # Text files
 thoughts.txt
 links.txt
+*.txt
 
 # test Directory used as a playground
 test/
 media/
+
+# zip files
+*.zip
+*.zst
